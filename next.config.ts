@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  turbopack: {
+    root: "/Users/alihusnain/development/haier-service-center",
+  },
 };
 
 export default nextConfig;

@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  username     String      @unique
+  name         String
+  passwordHash String
+  role         String
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  moves        StockMove[]
+  expenses     Expense[]
+  complaints   Complaint[]
+}
+
+model Product {
+  id     String  @id @default(cuid())
+  nameEn String
+  nameUr String
+  active Boolean @default(true)
+  parts  Part[]
+}
+
+model Part {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  name          String
+  model         String      @default("")
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  costPrice     Float       @default(0)
+  retailPrice   Float       @default(0)
+  marginPercent Float?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  moves         StockMove[]
+}
+
+model StockMove {
+  id             String     @id @default(cuid())
+  type           String
+  partId         String
+  part           Part       @relation(fields: [partId], references: [id])
+  qty            Int
+  unitCost       Float      @default(0)
+  unitRetail     Float      @default(0)
+  amount         Float      @default(0)
+  crtNumber      String     @default("")
+  technicianName String     @default("")
+  customerName   String     @default("")
+  note           String     @default("")
+  complaintId    String?
+  complaint      Complaint? @relation(fields: [complaintId], references: [id])
+  createdById    String
+  createdBy      User       @relation(fields: [createdById], references: [id])
+  createdAt      DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([partId])
+  @@index([complaintId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime
+  category    String
+  title       String
+  amount      Float
+  note        String   @default("")
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+model Complaint {
+  id               String      @id @default(cuid())
+  customerName     String
+  phone            String
+  address          String      @default("")
+  productName      String      @default("")
+  model            String      @default("")
+  detail           String      @default("")
+  visitType        String
+  technicianName   String      @default("")
+  estimate         Float       @default(0)
+  problemFound     String      @default("")
+  partsFitted      String      @default("")
+  offerGiven       String      @default("")
+  solution         String      @default("")
+  crtNumber        String      @default("")
+  collectionAmount Float       @default(0)
+  collectedAt      DateTime?
+  status           String      @default("OPEN")
+  closedAt         DateTime?
+  createdById      String
+  createdBy        User        @relation(fields: [createdById], references: [id])
+  createdAt        DateTime    @default(now())
+  moves            StockMove[]
+
+  @@index([phone])
+  @@index([customerName])
+  @@index([status])
+}
+
+model Technician {
+  id     String  @id @default(cuid())
+  name   String
+  kind   String
+  active Boolean @default(true)
+}
