@@ -21,7 +21,7 @@ export function ActionForm({
   return (
     <form action={formAction} className={className}>
       {state.error && isMessageKey(state.error) ? (
-        <p className="mb-4 rounded-lg border border-brand/20 bg-red-50 px-3 py-2 text-sm text-brand">
+        <p className="mb-4 rounded-lg border border-danger/20 bg-red-50 px-3 py-2 text-sm text-danger">
           {t(lang, state.error)}
         </p>
       ) : null}

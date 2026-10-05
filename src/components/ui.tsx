@@ -43,7 +43,7 @@ export function buttonClass(kind: "primary" | "ghost" = "primary") {
   if (kind === "ghost") {
     return "inline-flex min-h-11 items-center justify-center rounded-lg border border-line bg-white px-4 py-2.5 text-sm font-semibold text-ink hover:bg-paper";
   }
-  return "inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-900 disabled:opacity-60";
+  return "inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
 }
 
 export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {

@@ -39,7 +39,7 @@ export function Shell({
       <aside className="no-print sticky top-0 z-20 bg-ink text-white lg:static lg:min-h-screen lg:px-4 lg:py-6">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:block lg:px-2 lg:pt-0">
           <div className="w-full lg:w-auto">
-            <p className="text-xs font-semibold tracking-[0.16em] text-rose-200">HAIER</p>
+            <p className="text-xs font-semibold tracking-[0.16em] text-brand-soft">HAIER</p>
             <p className="text-sm font-semibold">{t(lang, "appName")}</p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0 lg:mt-4">
