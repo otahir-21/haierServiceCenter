@@ -46,14 +46,24 @@ export function buttonClass(kind: "primary" | "ghost" = "primary") {
   return "inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
 }
 
-export function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+export function Stat({
+  label,
+  value,
+  hint,
+  large = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  large?: boolean;
+}) {
   return (
-    <div className="rounded-2xl border border-line bg-card p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="num mt-1 text-xl font-semibold break-words sm:text-2xl" dir="ltr">
+    <div className={`rounded-2xl border p-4 ${large ? "border-brand bg-brand text-white" : "border-line bg-card"}`}>
+      <p className={`text-sm ${large ? "text-white/80" : "text-muted"}`}>{label}</p>
+      <p className={`num mt-1 font-semibold break-words ${large ? "text-3xl sm:text-4xl" : "text-xl sm:text-2xl"}`} dir="ltr">
         {value}
       </p>
-      {hint ? <p className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
+      {hint ? <p className={`mt-1 text-xs leading-5 ${large ? "text-white/80" : "text-muted"}`}>{hint}</p> : null}
     </div>
   );
 }

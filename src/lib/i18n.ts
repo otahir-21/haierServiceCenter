@@ -307,6 +307,16 @@ const en = {
   amountSlip: "Amount",
   thankYou: "Thank you.",
   systemName: "Haier Service Center",
+  openedToday: "Today",
+  openedYesterday: "Yesterday",
+  daysOpen: "days open",
+  deskSearch: "Find a customer",
+  deskSearchHelp: "Name or mobile number",
+  deskFind: "Find",
+  noCustomer: "No complaint with that name or number.",
+  lowParts: "Parts running low",
+  lowPartsHelp: "These are almost finished. Order more.",
+  noLowParts: "No parts are running low.",
 };
 
 const ur: { [K in keyof typeof en]: string } = {
@@ -618,6 +628,16 @@ const ur: { [K in keyof typeof en]: string } = {
   amountSlip: "رقم",
   thankYou: "شکریہ۔",
   systemName: "ہیئر سروس سینٹر",
+  openedToday: "آج",
+  openedYesterday: "کل",
+  daysOpen: "دن سے کھلا",
+  deskSearch: "گاہک تلاش کریں",
+  deskSearchHelp: "نام یا موبائل نمبر",
+  deskFind: "تلاش",
+  noCustomer: "اس نام یا نمبر کی کوئی کمپلینٹ نہیں۔",
+  lowParts: "کم ہوتے پرزے",
+  lowPartsHelp: "یہ تقریباً ختم ہو گئے ہیں۔ مزید منگوائیں۔",
+  noLowParts: "کوئی پرزہ کم نہیں۔",
 };
 
 export type Lang = "en" | "ur";

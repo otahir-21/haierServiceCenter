@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { buttonClass, PageHeader, Stat } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { reportRange, todayInputValue } from "@/lib/dates";
+import { prisma } from "@/lib/db";
 import { dayOnly, money, when } from "@/lib/format";
 import { categoryKey, t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { buildReport } from "@/lib/report";
+import { stockByPart } from "@/lib/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,15 @@ export default async function ReportsPage({
   const query = await searchParams;
   const range = reportRange(query.preset ?? "today", query.from, query.to);
   const report = await buildReport(range.start, range.end);
+  const stockParts = await prisma.part.findMany({ select: { id: true, costPrice: true } });
+  const stock = await stockByPart();
+  let pieces = 0;
+  let stockValue = 0;
+  for (const part of stockParts) {
+    const qty = stock.get(part.id) ?? 0;
+    pieces += qty;
+    stockValue += qty * part.costPrice;
+  }
   const today = todayInputValue();
   const presets = [
     ["today", t(lang, "today"), t(lang, "deskAdmin")],
@@ -81,6 +92,7 @@ export default async function ReportsPage({
         <Stat label={t(lang, "grossProfit")} value={money(report.grossProfit)} />
         <Stat label={t(lang, "shopExpenses")} value={money(report.expenseTotal)} />
         <Stat label={t(lang, "left")} value={money(report.left)} hint={t(lang, "leftHelp")} />
+        <Stat label={t(lang, "stockValue")} value={money(stockValue)} hint={`${pieces} ${t(lang, "pieces")}. ${t(lang, "atLatestCost")}`} />
         <Stat label={t(lang, "qtySold")} value={String(report.soldQty)} />
         <Stat
           label={t(lang, "partsReceived")}
