@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { money } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
-import { stockByPart } from "@/lib/stock";
+import { stockAlert, stockByPart } from "@/lib/stock";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +54,14 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
             </tr>
           </thead>
           <tbody>
-            {parts.map((part) => (
-              <tr key={part.id} className="border-b border-line last:border-0">
+            {parts.map((part) => {
+              const qty = stock.get(part.id) ?? 0;
+              const alert = admin ? stockAlert(qty, part.minQty, part.maxQty) : null;
+              return (
+              <tr
+                key={part.id}
+                className={`border-b border-line last:border-0 ${alert === "low" ? "bg-red-50" : alert === "high" ? "bg-amber-50" : ""}`}
+              >
                 <td className="num px-4 py-3 font-semibold" dir="ltr" data-label={t(lang, "partCode")}>
                   {admin ? (
                     <Link href={`/parts/${part.id}`} className="text-brand">
@@ -70,12 +76,15 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
                 <td className="px-4 py-3" data-label={t(lang, "model")}>{part.model}</td>
                 {admin ? <td className="num px-4 py-3" data-label={t(lang, "cost")}>{money(part.costPrice)}</td> : null}
                 <td className="num px-4 py-3" data-label={t(lang, "retail")}>{money(part.retailPrice)}</td>
-                {admin ? <td className="num px-4 py-3" data-label={t(lang, "onHand")}>{stock.get(part.id) ?? 0}</td> : null}
+                {admin ? <td className="num px-4 py-3" data-label={t(lang, "onHand")}>{qty}</td> : null}
                 {admin ? (
-                  <td className="px-4 py-3" data-label={t(lang, "status")}>{part.active ? t(lang, "active") : t(lang, "hidden")}</td>
+                  <td className="px-4 py-3" data-label={t(lang, "status")}>
+                    {alert === "low" ? t(lang, "reorder") : alert === "high" ? t(lang, "overStock") : part.active ? t(lang, "active") : t(lang, "hidden")}
+                  </td>
                 ) : null}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

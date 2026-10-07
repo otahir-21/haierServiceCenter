@@ -39,6 +39,8 @@ model Part {
   costPrice     Float       @default(0)
   retailPrice   Float       @default(0)
   marginPercent Float?
+  minQty        Int         @default(2)
+  maxQty        Int?
   active        Boolean     @default(true)
   createdAt     DateTime    @default(now())
   moves         StockMove[]
@@ -57,6 +59,10 @@ model StockMove {
   technicianName String     @default("")
   customerName   String     @default("")
   note           String     @default("")
+  source         String     @default("")
+  payment        String     @default("PAID")
+  billNumber     String     @default("")
+  paidAt         DateTime?
   complaintId    String?
   complaint      Complaint? @relation(fields: [complaintId], references: [id])
   createdById    String
@@ -99,6 +105,11 @@ model Complaint {
   solution         String      @default("")
   crtNumber        String      @default("")
   collectionAmount Float       @default(0)
+  laborCharge      Float       @default(1000)
+  laborWork        String      @default("")
+  billNumber       String      @default("")
+  billImage        Bytes?
+  billImageType    String      @default("")
   collectedAt      DateTime?
   status           String      @default("OPEN")
   closedAt         DateTime?

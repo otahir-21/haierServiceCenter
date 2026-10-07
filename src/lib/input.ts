@@ -16,6 +16,15 @@ export function moneyOrNull(formData: FormData, key: string) {
   return Math.round(value * 100) / 100;
 }
 
+export function optionalWhole(formData: FormData, key: string) {
+  const raw = str(formData, key);
+  if (!raw) return null;
+  if (!/^\d+$/.test(raw)) return Number.NaN;
+  const value = Number(raw);
+  if (value > 100000) return Number.NaN;
+  return value;
+}
+
 export function wholeQty(formData: FormData, key = "qty") {
   const raw = str(formData, key);
   if (!raw) return null;

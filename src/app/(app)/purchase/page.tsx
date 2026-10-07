@@ -32,6 +32,29 @@ export default async function PurchasePage({ searchParams }: { searchParams: Pro
       ) : (
         <Card className="max-w-2xl">
           <ActionForm action={purchaseStock} lang={lang} className="grid gap-4">
+            <fieldset className="grid gap-2 text-sm font-semibold">
+              <legend>{t(lang, "boughtFrom")}</legend>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="source" value="COMPANY" defaultChecked />
+                {t(lang, "fromCompany")}
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="source" value="LOCAL" />
+                {t(lang, "fromLocal")}
+              </label>
+            </fieldset>
+            <fieldset className="grid gap-2 text-sm font-semibold">
+              <legend>{t(lang, "paymentKind")}</legend>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="payment" value="PAID" defaultChecked />
+                {t(lang, "cashPaid")}
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="radio" name="payment" value="ADVANCE" />
+                {t(lang, "onAdvance")}
+              </label>
+              <span className="text-xs font-normal text-muted">{t(lang, "purchaseSourceHelp")}</span>
+            </fieldset>
             <label>
               <Label>{t(lang, "choosePart")}</Label>
               <select name="partId" className="w-full rounded-lg border border-line bg-white px-3 py-2.5">
@@ -64,7 +87,11 @@ export default async function PurchasePage({ searchParams }: { searchParams: Pro
               </label>
             </div>
             <label>
-              <Label>{t(lang, "note")}</Label>
+              <Label>{t(lang, "billNumber")}</Label>
+              <TextInput name="billNumber" dir="ltr" required />
+            </label>
+            <label>
+              <Label>{t(lang, "vendorNote")}</Label>
               <TextInput name="note" />
             </label>
             <SubmitButton label={t(lang, "receive")} />
@@ -78,8 +105,11 @@ export default async function PurchasePage({ searchParams }: { searchParams: Pro
             <tr>
               <th className="px-4 py-3">{t(lang, "date")}</th>
               <th className="px-4 py-3">{t(lang, "partName")}</th>
+              <th className="px-4 py-3">{t(lang, "boughtFrom")}</th>
+              <th className="px-4 py-3">{t(lang, "billNumber")}</th>
               <th className="px-4 py-3">{t(lang, "qty")}</th>
               <th className="px-4 py-3">{t(lang, "cost")}</th>
+              <th className="px-4 py-3">{t(lang, "paymentKind")}</th>
               <th className="px-4 py-3">{t(lang, "who")}</th>
             </tr>
           </thead>
@@ -90,8 +120,15 @@ export default async function PurchasePage({ searchParams }: { searchParams: Pro
                 <td className="px-4 py-3" data-label={t(lang, "partName")}>
                   {move.part.code} · {move.part.name}
                 </td>
+                <td className="px-4 py-3" data-label={t(lang, "boughtFrom")}>
+                  {move.source === "COMPANY" ? t(lang, "fromCompany") : move.source === "LOCAL" ? t(lang, "fromLocal") : ""}
+                </td>
+                <td className="num px-4 py-3" dir="ltr" data-label={t(lang, "billNumber")}>{move.billNumber}</td>
                 <td className="num px-4 py-3" data-label={t(lang, "qty")}>{move.qty}</td>
                 <td className="num px-4 py-3" data-label={t(lang, "cost")}>{money(move.amount)}</td>
+                <td className="px-4 py-3" data-label={t(lang, "paymentKind")}>
+                  {move.payment === "ADVANCE" ? t(lang, "payLater") : t(lang, "paidLabel")}
+                </td>
                 <td className="px-4 py-3" data-label={t(lang, "who")}>{move.createdBy.name}</td>
               </tr>
             ))}

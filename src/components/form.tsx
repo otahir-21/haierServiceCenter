@@ -11,15 +11,17 @@ export function ActionForm({
   lang,
   children,
   className = "",
+  encType,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   lang: Lang;
   children: React.ReactNode;
   className?: string;
+  encType?: "multipart/form-data";
 }) {
   const [state, formAction] = useActionState(action, {});
   return (
-    <form action={formAction} className={className}>
+    <form action={formAction} className={className} encType={encType}>
       {state.error && isMessageKey(state.error) ? (
         <p className="mb-4 rounded-lg border border-danger/20 bg-red-50 px-3 py-2 text-sm text-danger">
           {t(lang, state.error)}

@@ -7,11 +7,9 @@ import { money } from "@/lib/format";
 import { t, type Lang } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 import { buildReport } from "@/lib/report";
-import { stockByPart } from "@/lib/stock";
+import { stockAlert, stockByPart } from "@/lib/stock";
 
 export const dynamic = "force-dynamic";
-
-const LOW_AT = 2;
 
 function daysOpen(date: Date) {
   const todayStart = karachiDayStart(todayInputValue());
@@ -171,14 +169,20 @@ export default async function DeskPage({ searchParams }: { searchParams: Promise
         </div>
       </section>
 
-      {admin ? <LowParts lang={lang} /> : null}
+      {admin ? <StockAlerts lang={lang} /> : null}
     </div>
   );
 }
 
 async function AdminMoney({ openCount, lang }: { openCount: number; lang: Lang }) {
   const range = reportRange("today");
-  const report = await buildReport(range.start, range.end);
+  const [report, owed] = await Promise.all([
+    buildReport(range.start, range.end),
+    prisma.stockMove.aggregate({
+      where: { type: "PURCHASE", payment: "ADVANCE" },
+      _sum: { amount: true },
+    }),
+  ]);
   return (
     <div className="mt-6 grid gap-3">
       <Stat large label={t(lang, "cashCollected")} value={money(report.cashCollected)} hint={t(lang, "today")} />
@@ -186,49 +190,80 @@ async function AdminMoney({ openCount, lang }: { openCount: number; lang: Lang }
         <Stat label={t(lang, "shopExpenses")} value={money(report.expenseTotal)} />
         <Stat label={t(lang, "left")} value={money(report.left)} />
         <Stat label={t(lang, "grossProfit")} value={money(report.grossProfit)} />
+        <Stat label={t(lang, "stillToPay")} value={money(owed._sum.amount ?? 0)} />
         <Stat label={t(lang, "openComplaints")} value={String(openCount)} />
       </div>
     </div>
   );
 }
 
-async function LowParts({ lang }: { lang: Lang }) {
+async function StockAlerts({ lang }: { lang: Lang }) {
   const parts = await prisma.part.findMany({
     where: { active: true },
-    select: { id: true, code: true, name: true },
+    select: { id: true, code: true, name: true, minQty: true, maxQty: true },
     orderBy: { code: "asc" },
   });
   const stock = await stockByPart();
-  const low = parts
-    .map((part) => ({ ...part, qty: stock.get(part.id) ?? 0 }))
-    .filter((part) => part.qty <= LOW_AT)
+  const rows = parts.map((part) => ({ ...part, qty: stock.get(part.id) ?? 0 }));
+  const low = rows
+    .filter((part) => stockAlert(part.qty, part.minQty, part.maxQty) === "low")
     .sort((a, b) => a.qty - b.qty)
+    .slice(0, 8);
+  const high = rows
+    .filter((part) => stockAlert(part.qty, part.minQty, part.maxQty) === "high")
+    .sort((a, b) => b.qty - a.qty)
     .slice(0, 8);
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-semibold">{t(lang, "lowParts")}</h2>
-      <p className="mt-1 text-sm text-muted">{t(lang, "lowPartsHelp")}</p>
-      {low.length === 0 ? <p className="mt-3 text-sm text-muted">{t(lang, "noLowParts")}</p> : null}
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        {low.map((part) => (
-          <Link
-            key={part.id}
-            href={`/parts/${part.id}`}
-            className="flex items-baseline justify-between gap-3 rounded-xl border border-line bg-card px-4 py-3"
-          >
-            <span className="min-w-0">
-              <span className="num font-semibold text-brand" dir="ltr">
-                {part.code}
+    <>
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">{t(lang, "lowParts")}</h2>
+        <p className="mt-1 text-sm text-muted">{t(lang, "lowPartsHelp")}</p>
+        {low.length === 0 ? <p className="mt-3 text-sm text-muted">{t(lang, "noLowParts")}</p> : null}
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {low.map((part) => (
+            <Link
+              key={part.id}
+              href={`/parts/${part.id}`}
+              className="flex items-baseline justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+            >
+              <span className="min-w-0">
+                <span className="num font-semibold text-brand" dir="ltr">
+                  {part.code}
+                </span>
+                <span className="text-sm"> {part.name}</span>
               </span>
-              <span className="text-sm"> {part.name}</span>
-            </span>
-            <span className="num shrink-0 text-sm font-semibold" dir="ltr">
-              {part.qty}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
+              <span className="num shrink-0 text-sm font-semibold text-danger" dir="ltr">
+                {part.qty}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">{t(lang, "tooMuch")}</h2>
+        <p className="mt-1 text-sm text-muted">{t(lang, "tooMuchHelp")}</p>
+        {high.length === 0 ? <p className="mt-3 text-sm text-muted">{t(lang, "noTooMuch")}</p> : null}
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {high.map((part) => (
+            <Link
+              key={part.id}
+              href={`/parts/${part.id}`}
+              className="flex items-baseline justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+            >
+              <span className="min-w-0">
+                <span className="num font-semibold text-brand" dir="ltr">
+                  {part.code}
+                </span>
+                <span className="text-sm"> {part.name}</span>
+              </span>
+              <span className="num shrink-0 text-sm font-semibold" dir="ltr">
+                {part.qty}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }

@@ -81,7 +81,7 @@ export default async function SalePage({ searchParams }: { searchParams: Promise
               <label>
                 <Label>{t(lang, "crt")}</Label>
                 <TextInput name="crt" dir="ltr" required />
-                <span className="mt-1 block text-xs text-muted">{t(lang, "crtHelp")}</span>
+                <span className="mt-1 block text-xs text-muted">{t(lang, "crtHelp")} {t(lang, "referenceHelp")}</span>
               </label>
             </div>
             <label>
@@ -142,6 +142,7 @@ export default async function SalePage({ searchParams }: { searchParams: Promise
                 <td className="num px-4 py-3" data-label={t(lang, "qty")}>{move.qty}</td>
                 <td className="num px-4 py-3" dir="ltr" data-label={t(lang, "crtShort")}>
                   {move.crtNumber}
+                  {move.technicianName ? ` · ${move.technicianName}` : ""}
                 </td>
                 <td className="num px-4 py-3" data-label={t(lang, "amount")}>{money(move.amount)}</td>
                 {admin && "unitCost" in move ? (

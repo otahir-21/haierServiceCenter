@@ -4,6 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/form";
 import { Card, Label, PageHeader, TextArea, TextInput } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { LABOR_CHARGE } from "@/lib/catalog";
 import { t } from "@/lib/i18n";
 import { getLang } from "@/lib/lang";
 
@@ -73,6 +74,11 @@ export default async function NewComplaintPage() {
             <Label>{t(lang, "estimate")}</Label>
             <TextInput name="estimate" inputMode="decimal" dir="ltr" defaultValue="0" />
             <span className="mt-1 block text-xs text-muted">{t(lang, "estimateHelp")}</span>
+          </label>
+          <label>
+            <Label>{t(lang, "laborCharge")}</Label>
+            <TextInput name="laborCharge" inputMode="decimal" dir="ltr" defaultValue={String(LABOR_CHARGE)} />
+            <span className="mt-1 block text-xs text-muted">{t(lang, "laborChargeHelp")}</span>
           </label>
           <SubmitButton label={t(lang, "registerComplaint")} />
         </ActionForm>

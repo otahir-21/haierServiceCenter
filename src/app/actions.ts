@@ -5,9 +5,9 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { clearSessionCookie, currentUser, setSessionCookie, signSession } from "@/lib/auth";
-import { STARTER_PRODUCTS, EXPENSE_CATEGORIES } from "@/lib/catalog";
+import { STARTER_PRODUCTS, EXPENSE_CATEGORIES, LABOR_CHARGE } from "@/lib/catalog";
 import { karachiDayStart } from "@/lib/dates";
-import { clip, moneyOrNull, str, usernameOf, validUsername, wholeQty, type ActionState } from "@/lib/input";
+import { clip, moneyOrNull, optionalWhole, str, usernameOf, validUsername, wholeQty, type ActionState } from "@/lib/input";
 import { onHand } from "@/lib/stock";
 import { roundMoney } from "@/lib/format";
 
@@ -95,6 +95,38 @@ async function resolveProduct(formData: FormData) {
   return found?.id ?? null;
 }
 
+const BILL_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const BILL_LIMIT = 1_500_000;
+
+function stockLevels(formData: FormData) {
+  const minRaw = str(formData, "minQty");
+  const maxRaw = str(formData, "maxQty");
+  const minQty = minRaw === "" ? 2 : optionalWhole(formData, "minQty");
+  const maxQty = maxRaw === "" ? null : optionalWhole(formData, "maxQty");
+  if (minQty == null || Number.isNaN(minQty) || (maxQty != null && Number.isNaN(maxQty))) {
+    return { error: "qty_level_invalid" as const };
+  }
+  if (maxQty != null && maxQty < minQty) return { error: "level_invalid" as const };
+  return { minQty, maxQty };
+}
+
+function purchaseMeta(formData: FormData) {
+  const sourceRaw = str(formData, "source");
+  const source = sourceRaw === "LOCAL" ? "LOCAL" : sourceRaw === "COMPANY" ? "COMPANY" : "";
+  if (!source) return { error: "required" as const };
+  const payment = str(formData, "payment") === "ADVANCE" ? "ADVANCE" : "PAID";
+  const billNumber = clip(str(formData, "billNumber"), 40);
+  if (!billNumber) return { error: "bill_required" as const };
+  return { source, payment, billNumber };
+}
+
+async function readBill(formData: FormData) {
+  const file = formData.get("billPhoto");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (!BILL_TYPES.has(file.type) || file.size > BILL_LIMIT) return { error: "bill_invalid" as const };
+  return { image: Buffer.from(await file.arrayBuffer()), type: file.type };
+}
+
 function priced(cost: number, marginRaw: number | null, retailRaw: number | null) {
   if (marginRaw != null && !Number.isNaN(marginRaw)) {
     if (marginRaw < 0 || marginRaw > 500) return { error: "amount_invalid" as const };
@@ -132,6 +164,10 @@ export async function createPart(_prev: ActionState, formData: FormData): Promis
 
   const price = priced(firstCost ?? 0, moneyOrNull(formData, "margin"), moneyOrNull(formData, "retail"));
   if ("error" in price) return price;
+  const levels = stockLevels(formData);
+  if ("error" in levels) return levels;
+  const opening = firstQty && firstQty > 0 ? purchaseMeta(formData) : null;
+  if (opening && "error" in opening) return opening;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -144,9 +180,11 @@ export async function createPart(_prev: ActionState, formData: FormData): Promis
           costPrice: firstCost ?? 0,
           retailPrice: price.retail,
           marginPercent: price.margin,
+          minQty: levels.minQty,
+          maxQty: levels.maxQty,
         },
       });
-      if (firstQty && firstQty > 0) {
+      if (firstQty && firstQty > 0 && opening && !("error" in opening)) {
         await tx.stockMove.create({
           data: {
             type: "PURCHASE",
@@ -155,6 +193,10 @@ export async function createPart(_prev: ActionState, formData: FormData): Promis
             unitCost: firstCost ?? 0,
             unitRetail: price.retail,
             amount: roundMoney(firstQty * (firstCost ?? 0)),
+            source: opening.source,
+            payment: opening.payment,
+            billNumber: opening.billNumber,
+            note: clip(str(formData, "note"), 300),
             createdById: gate.user.id,
           },
         });
@@ -184,6 +226,8 @@ export async function updatePart(_prev: ActionState, formData: FormData): Promis
 
   const price = priced(part.costPrice, moneyOrNull(formData, "margin"), moneyOrNull(formData, "retail"));
   if ("error" in price) return price;
+  const levels = stockLevels(formData);
+  if ("error" in levels) return levels;
 
   await prisma.part.update({
     where: { id },
@@ -193,6 +237,8 @@ export async function updatePart(_prev: ActionState, formData: FormData): Promis
       productId,
       retailPrice: price.retail,
       marginPercent: price.margin,
+      minQty: levels.minQty,
+      maxQty: levels.maxQty,
       active: formData.get("active") === "on",
     },
   });
@@ -211,6 +257,8 @@ export async function purchaseStock(_prev: ActionState, formData: FormData): Pro
 
   const part = await prisma.part.findUnique({ where: { id: partId } });
   if (!part) return { error: "partMissing" };
+  const meta = purchaseMeta(formData);
+  if ("error" in meta) return meta;
 
   const marginRaw = moneyOrNull(formData, "margin");
   const retailRaw = moneyOrNull(formData, "retail");
@@ -243,6 +291,9 @@ export async function purchaseStock(_prev: ActionState, formData: FormData): Pro
         unitRetail: retail,
         amount: roundMoney(qty * unitCost),
         note: clip(str(formData, "note"), 300),
+        source: meta.source,
+        payment: meta.payment,
+        billNumber: meta.billNumber,
         createdById: gate.user.id,
       },
     }),
@@ -344,7 +395,11 @@ export async function createComplaint(_prev: ActionState, formData: FormData): P
   if (!phone) return { error: "phone_required" };
   if (!technicianName) return { error: "technician_required" };
   const estimate = moneyOrNull(formData, "estimate") ?? 0;
-  if (Number.isNaN(estimate) || estimate < 0) return { error: "amount_invalid" };
+  const laborRaw = moneyOrNull(formData, "laborCharge");
+  const laborCharge = laborRaw == null ? LABOR_CHARGE : laborRaw;
+  if (Number.isNaN(estimate) || estimate < 0 || Number.isNaN(laborCharge) || laborCharge < 0) {
+    return { error: "amount_invalid" };
+  }
 
   const complaint = await prisma.complaint.create({
     data: {
@@ -357,6 +412,7 @@ export async function createComplaint(_prev: ActionState, formData: FormData): P
       visitType,
       technicianName,
       estimate,
+      laborCharge,
       createdById: gate.user.id,
     },
   });
@@ -383,11 +439,22 @@ export async function updateComplaint(_prev: ActionState, formData: FormData): P
 
   const estimate = moneyOrNull(formData, "estimate") ?? 0;
   const collection = moneyOrNull(formData, "collection") ?? 0;
-  if (Number.isNaN(estimate) || estimate < 0 || Number.isNaN(collection) || collection < 0) {
+  const laborRaw = moneyOrNull(formData, "laborCharge");
+  const laborCharge = laborRaw == null ? LABOR_CHARGE : laborRaw;
+  if (
+    Number.isNaN(estimate) ||
+    estimate < 0 ||
+    Number.isNaN(collection) ||
+    collection < 0 ||
+    Number.isNaN(laborCharge) ||
+    laborCharge < 0
+  ) {
     return { error: "amount_invalid" };
   }
   const crtNumber = clip(str(formData, "crt"), 40);
   if (collection > 0 && !crtNumber) return { error: "crt_required" };
+  const bill = await readBill(formData);
+  if (bill && "error" in bill) return bill;
 
   const amountChanged = collection !== existing.collectionAmount;
   await prisma.$transaction([
@@ -403,6 +470,10 @@ export async function updateComplaint(_prev: ActionState, formData: FormData): P
       visitType,
       technicianName,
       estimate,
+      laborCharge,
+      laborWork: clip(str(formData, "laborWork"), 2000),
+      billNumber: clip(str(formData, "billNumber"), 40),
+      ...(bill ? { billImage: bill.image, billImageType: bill.type } : {}),
       problemFound: clip(str(formData, "problemFound"), 2000),
       partsFitted: clip(str(formData, "partsFitted"), 2000),
       offerGiven: clip(str(formData, "offerGiven"), 2000),
@@ -420,6 +491,26 @@ export async function updateComplaint(_prev: ActionState, formData: FormData): P
     }),
   ]);
   redirect(`/complaints/${id}?msg=${intent === "close" ? "closed_saved" : "saved"}`);
+}
+
+export async function settlePurchase(formData: FormData) {
+  const gate = await adminActor();
+  if ("error" in gate) redirect("/login");
+  const id = str(formData, "id");
+  const move = await prisma.stockMove.findUnique({ where: { id } });
+  if (move && move.type === "PURCHASE" && move.payment === "ADVANCE") {
+    await prisma.stockMove.update({
+      where: { id },
+      data: { payment: "PAID", paidAt: new Date() },
+    });
+  }
+  const preset = str(formData, "preset") || "month";
+  const params = new URLSearchParams({ preset, msg: "purchase_paid" });
+  const from = str(formData, "from");
+  const to = str(formData, "to");
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  redirect(`/reports?${params.toString()}`);
 }
 
 export async function reopenComplaint(formData: FormData) {

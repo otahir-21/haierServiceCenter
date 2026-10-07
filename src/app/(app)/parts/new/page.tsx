@@ -68,6 +68,18 @@ export default async function NewPartPage() {
               <TextInput name="retail" inputMode="decimal" dir="ltr" />
             </label>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <Label>{t(lang, "minStock")}</Label>
+              <TextInput name="minQty" inputMode="numeric" dir="ltr" defaultValue="2" />
+              <span className="mt-1 block text-xs text-muted">{t(lang, "minStockHelp")}</span>
+            </label>
+            <label>
+              <Label>{t(lang, "maxStock")}</Label>
+              <TextInput name="maxQty" inputMode="numeric" dir="ltr" />
+              <span className="mt-1 block text-xs text-muted">{t(lang, "maxStockHelp")}</span>
+            </label>
+          </div>
           <p className="text-sm text-muted">{t(lang, "openingHelp")}</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label>
@@ -79,6 +91,33 @@ export default async function NewPartPage() {
               <TextInput name="firstCost" inputMode="decimal" dir="ltr" />
             </label>
           </div>
+          <fieldset className="flex flex-wrap gap-4 text-sm font-semibold">
+            <legend className="mb-2 w-full">{t(lang, "boughtFrom")}</legend>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="source" value="COMPANY" defaultChecked />
+              {t(lang, "fromCompany")}
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="source" value="LOCAL" />
+              {t(lang, "fromLocal")}
+            </label>
+          </fieldset>
+          <fieldset className="flex flex-wrap gap-4 text-sm font-semibold">
+            <legend className="mb-2 w-full">{t(lang, "paymentKind")}</legend>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="payment" value="PAID" defaultChecked />
+              {t(lang, "cashPaid")}
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="radio" name="payment" value="ADVANCE" />
+              {t(lang, "onAdvance")}
+            </label>
+          </fieldset>
+          <label>
+            <Label>{t(lang, "billNumber")}</Label>
+            <TextInput name="billNumber" dir="ltr" />
+            <span className="mt-1 block text-xs text-muted">{t(lang, "openingBillHelp")}</span>
+          </label>
           <SubmitButton label={t(lang, "savePart")} />
         </ActionForm>
       </Card>

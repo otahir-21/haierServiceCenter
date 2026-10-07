@@ -8,6 +8,12 @@ export async function onHand(partId: string) {
   return moves.reduce((sum, move) => sum + (move.type === "PURCHASE" ? move.qty : -move.qty), 0);
 }
 
+export function stockAlert(qty: number, minQty: number, maxQty: number | null) {
+  if (qty <= minQty) return "low" as const;
+  if (maxQty != null && qty >= maxQty) return "high" as const;
+  return null;
+}
+
 export async function stockByPart() {
   const moves = await prisma.stockMove.groupBy({
     by: ["partId", "type"],

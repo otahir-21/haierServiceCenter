@@ -23,11 +23,15 @@ export async function buildReport(start: Date, end: Date) {
   let soldQty = 0;
   let receivedQty = 0;
   let purchaseValue = 0;
+  let companyPurchase = 0;
+  let localPurchase = 0;
 
   for (const move of moves) {
     if (move.type === "PURCHASE") {
       receivedQty += move.qty;
       purchaseValue += move.amount;
+      if (move.source === "COMPANY") companyPurchase += move.amount;
+      else if (move.source === "LOCAL") localPurchase += move.amount;
     } else {
       soldQty += move.qty;
       costOfSold += move.qty * move.unitCost;
@@ -57,6 +61,10 @@ export async function buildReport(start: Date, end: Date) {
     soldQty,
     receivedQty,
     purchaseValue,
+    companyPurchase,
+    localPurchase,
+    spent: purchaseValue + expenseTotal,
+    incomeAfterSpent: cashCollected - (purchaseValue + expenseTotal),
     byCategory: [...byCategory.entries()],
     moves,
     expenses,

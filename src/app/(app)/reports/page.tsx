@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { buttonClass, PageHeader, Stat } from "@/components/ui";
+import { settlePurchase } from "@/app/actions";
+import { buttonClass, Flash, PageHeader, Stat } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { reportRange, todayInputValue } from "@/lib/dates";
 import { prisma } from "@/lib/db";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ preset?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ preset?: string; from?: string; to?: string; msg?: string }>;
 }) {
   const user = await currentUser();
   if (!user) redirect("/login");
@@ -23,6 +24,13 @@ export default async function ReportsPage({
   const query = await searchParams;
   const range = reportRange(query.preset ?? "today", query.from, query.to);
   const report = await buildReport(range.start, range.end);
+  const payable = await prisma.stockMove.findMany({
+    where: { type: "PURCHASE", payment: "ADVANCE" },
+    include: { part: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const owedHaier = payable.filter((row) => row.source === "COMPANY").reduce((sum, row) => sum + row.amount, 0);
+  const owedLocal = payable.filter((row) => row.source !== "COMPANY").reduce((sum, row) => sum + row.amount, 0);
   const stockParts = await prisma.part.findMany({ select: { id: true, costPrice: true } });
   const stock = await stockByPart();
   let pieces = 0;
@@ -42,6 +50,7 @@ export default async function ReportsPage({
   return (
     <div>
       <PageHeader title={t(lang, "reportTitle")} text={t(lang, "reportIntro")} />
+      <Flash msg={query.msg} lang={lang} />
       <div className="mb-4 flex flex-wrap gap-2">
         {presets.map(([preset, label]) => (
           <a
@@ -101,6 +110,75 @@ export default async function ReportsPage({
         />
       </div>
 
+      <h2 className="mb-1 mt-8 text-lg font-semibold">{t(lang, "weekPicture")}</h2>
+      <p className="mb-3 text-sm text-muted">{t(lang, "weekPictureHelp")}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Stat label={t(lang, "haierPurchases")} value={money(report.companyPurchase)} />
+        <Stat label={t(lang, "localPurchases")} value={money(report.localPurchase)} />
+        {report.purchaseValue !== report.companyPurchase + report.localPurchase ? (
+          <Stat
+            label={t(lang, "other")}
+            value={money(report.purchaseValue - report.companyPurchase - report.localPurchase)}
+          />
+        ) : null}
+        <Stat label={t(lang, "totalPurchases")} value={money(report.purchaseValue)} />
+        <Stat label={t(lang, "income")} value={money(report.cashCollected)} />
+        <Stat label={t(lang, "shopExpenses")} value={money(report.expenseTotal)} />
+        <Stat label={t(lang, "spent")} value={money(report.spent)} hint={t(lang, "spentHelp")} />
+        <Stat label={t(lang, "incomeAfterSpent")} value={money(report.incomeAfterSpent)} />
+        <Stat label={t(lang, "owedToHaier")} value={money(owedHaier)} hint={t(lang, "stillToPayHelp")} />
+        <Stat label={t(lang, "owedToLocal")} value={money(owedLocal)} />
+      </div>
+
+      <h2 className="mb-3 mt-8 text-lg font-semibold">{t(lang, "payableList")}</h2>
+      {payable.length === 0 ? <p className="text-sm text-muted">{t(lang, "noPayable")}</p> : null}
+      {payable.length > 0 ? (
+        <div className="overflow-x-auto rounded-2xl border border-line bg-card">
+          <table className="data-table w-full text-sm">
+            <thead className="border-b border-line text-start text-muted">
+              <tr>
+                <th className="px-4 py-3">{t(lang, "date")}</th>
+                <th className="px-4 py-3">{t(lang, "boughtFrom")}</th>
+                <th className="px-4 py-3">{t(lang, "partName")}</th>
+                <th className="px-4 py-3">{t(lang, "qty")}</th>
+                <th className="px-4 py-3">{t(lang, "rate")}</th>
+                <th className="px-4 py-3">{t(lang, "figure")}</th>
+                <th className="px-4 py-3">{t(lang, "billNumber")}</th>
+                <th className="px-4 py-3">{t(lang, "paymentKind")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payable.map((row) => (
+                <tr key={row.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3" data-label={t(lang, "date")}>{when(row.createdAt)}</td>
+                  <td className="px-4 py-3" data-label={t(lang, "boughtFrom")}>
+                    {row.source === "COMPANY" ? t(lang, "fromCompany") : t(lang, "fromLocal")}
+                  </td>
+                  <td className="px-4 py-3" data-label={t(lang, "partName")}>
+                    {row.part.code} · {row.part.name}
+                  </td>
+                  <td className="num px-4 py-3" data-label={t(lang, "qty")}>{row.qty}</td>
+                  <td className="num px-4 py-3" data-label={t(lang, "rate")}>{money(row.unitCost)}</td>
+                  <td className="num px-4 py-3" data-label={t(lang, "figure")}>{money(row.amount)}</td>
+                  <td className="num px-4 py-3" dir="ltr" data-label={t(lang, "billNumber")}>{row.billNumber}</td>
+                  <td className="px-4 py-3" data-label={t(lang, "paymentKind")}>
+                    <form action={settlePurchase}>
+                      <input type="hidden" name="id" value={row.id} />
+                      <input type="hidden" name="preset" value={range.preset} />
+                      <input type="hidden" name="from" value={query.from ?? ""} />
+                      <input type="hidden" name="to" value={query.to ?? ""} />
+                      <button className="font-semibold text-brand" type="submit">
+                        {t(lang, "markPaid")}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       <h2 className="mb-3 mt-8 text-lg font-semibold">{t(lang, "byCategory")}</h2>
       {report.byCategory.length === 0 ? <p className="text-sm text-muted">{t(lang, "noExpenses")}</p> : null}
       <ul className="grid gap-2 sm:grid-cols-2">
@@ -112,7 +190,7 @@ export default async function ReportsPage({
         ))}
       </ul>
 
-      <h2 className="mb-3 mt-8 text-lg font-semibold">{t(lang, "cashList")}</h2>
+      <h2 className="mb-3 mt-8 text-lg font-semibold">{t(lang, "sellOutDetail")}</h2>
       <div className="overflow-x-auto rounded-2xl border border-line bg-card">
         <table className="data-table w-full text-sm">
           <thead className="border-b border-line text-start text-muted">
@@ -133,6 +211,8 @@ export default async function ReportsPage({
                   <td className="px-4 py-3" data-label={t(lang, "type")}>{move.type === "ISSUE" ? t(lang, "issued") : t(lang, "direct")}</td>
                   <td className="px-4 py-3" data-label={t(lang, "partMovement")}>
                     {move.part.code} · {move.part.name} · {move.qty}
+                    {move.technicianName ? ` · ${move.technicianName}` : ""}
+                    {move.customerName ? ` · ${move.customerName}` : ""}
                   </td>
                   <td className="num px-4 py-3" dir="ltr" data-label={t(lang, "crtShort")}>
                     {move.crtNumber}

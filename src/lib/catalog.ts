@@ -21,3 +21,5 @@ export const EXPENSE_CATEGORIES = [
 ] as const;
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const LABOR_CHARGE = 1000;

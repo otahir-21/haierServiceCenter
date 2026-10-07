@@ -82,6 +82,18 @@ export default async function EditPartPage({
               <TextInput name="retail" inputMode="decimal" dir="ltr" defaultValue={part.retailPrice} />
             </label>
           </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label>
+              <Label>{t(lang, "minStock")}</Label>
+              <TextInput name="minQty" inputMode="numeric" dir="ltr" defaultValue={part.minQty} />
+              <span className="mt-1 block text-xs text-muted">{t(lang, "minStockHelp")}</span>
+            </label>
+            <label>
+              <Label>{t(lang, "maxStock")}</Label>
+              <TextInput name="maxQty" inputMode="numeric" dir="ltr" defaultValue={part.maxQty ?? ""} />
+              <span className="mt-1 block text-xs text-muted">{t(lang, "maxStockHelp")}</span>
+            </label>
+          </div>
           <label className="flex items-center gap-2 text-sm font-semibold">
             <input type="checkbox" name="active" defaultChecked={part.active} />
             {t(lang, "active")}
