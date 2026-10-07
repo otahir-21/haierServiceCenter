@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createComplaint } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/form";
-import { Card, Label, PageHeader, TextArea, TextInput } from "@/components/ui";
+import { Card, Label, PageHeader, Select, TextArea, TextInput } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { LABOR_CHARGE } from "@/lib/catalog";
@@ -62,13 +62,21 @@ export default async function NewComplaintPage() {
           </fieldset>
           <label>
             <Label>{t(lang, "technician")}</Label>
-            <TextInput name="technicianName" list="complaint-techs" required />
-            <datalist id="complaint-techs">
-              {techs.map((tech) => (
-                <option key={tech.id} value={tech.name} />
-              ))}
-            </datalist>
-            <span className="mt-1 block text-xs text-muted">{t(lang, "exampleNames")}</span>
+            {techs.length > 0 ? (
+              <Select name="technicianName" required defaultValue="">
+                <option value="">{t(lang, "selectTechnician")}</option>
+                {techs.map((tech) => (
+                  <option key={tech.id} value={tech.name}>
+                    {tech.name}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <>
+                <TextInput name="technicianName" required />
+                <span className="mt-1 block text-xs text-muted">{t(lang, "exampleNames")}</span>
+              </>
+            )}
           </label>
           <label>
             <Label>{t(lang, "estimate")}</Label>

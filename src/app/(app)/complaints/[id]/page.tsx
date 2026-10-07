@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { reopenComplaint, takePartForComplaint, updateComplaint } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/form";
 import { SaveOrClose } from "@/components/save-or-close";
-import { buttonClass, Card, Flash, Label, PageHeader, TextArea, TextInput } from "@/components/ui";
+import { buttonClass, Card, Flash, Label, PageHeader, Select, TextArea, TextInput } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { money, when } from "@/lib/format";
@@ -99,12 +99,20 @@ export default async function ComplaintPage({
           </fieldset>
           <label>
             <Label>{t(lang, "technician")}</Label>
-            <TextInput name="technicianName" list="edit-techs" required defaultValue={job.technicianName} />
-            <datalist id="edit-techs">
-              {techs.map((tech) => (
-                <option key={tech.id} value={tech.name} />
-              ))}
-            </datalist>
+            {techs.length > 0 ? (
+              <Select name="technicianName" required defaultValue={job.technicianName}>
+                {!techs.some((tech) => tech.name === job.technicianName) ? (
+                  <option value={job.technicianName}>{job.technicianName}</option>
+                ) : null}
+                {techs.map((tech) => (
+                  <option key={tech.id} value={tech.name}>
+                    {tech.name}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <TextInput name="technicianName" required defaultValue={job.technicianName} />
+            )}
           </label>
           <label>
             <Label>{t(lang, "estimate")}</Label>

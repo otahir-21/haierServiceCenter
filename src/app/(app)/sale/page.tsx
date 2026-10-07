@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { recordSale } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/form";
 import { PartSelect } from "@/components/part-select";
-import { Card, Label, PageHeader, TextInput } from "@/components/ui";
+import { Card, Label, PageHeader, Select, TextInput } from "@/components/ui";
 import { currentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { money, when } from "@/lib/format";
@@ -91,12 +91,18 @@ export default async function SalePage({ searchParams }: { searchParams: Promise
             </label>
             <label>
               <Label>{t(lang, "technician")}</Label>
-              <TextInput name="technicianName" list="tech-names" />
-              <datalist id="tech-names">
-                {techs.map((tech) => (
-                  <option key={tech.id} value={tech.name} />
-                ))}
-              </datalist>
+              {techs.length > 0 ? (
+                <Select name="technicianName" defaultValue="">
+                  <option value="">{t(lang, "selectTechnician")}</option>
+                  {techs.map((tech) => (
+                    <option key={tech.id} value={tech.name}>
+                      {tech.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <TextInput name="technicianName" />
+              )}
               <span className="mt-1 block text-xs text-muted">{t(lang, "issueHelp")}</span>
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
